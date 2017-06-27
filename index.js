@@ -31,7 +31,7 @@ function Machine(opts) {
     }
 
     this.batch = [];
-    
+
     this.opts = opts;
     this.opts.cwd = this.opts.cwd || process.cwd();
     this.opts.env = this.opts.env || process.env;
@@ -285,22 +285,44 @@ Machine.prototype.destroy = function(args, cb) {
     cb = cb || args;
 
     var command = _command('destroy', args, ['-f']);
-    this._run(command, cb);
+    var proc = this._run(command, cb);
+
+    var self = this;
+    proc.stdout.on('data', function(buff) {
+        var data = buff.toString();
+        self.emit('destroy-progress', data);
+    });
 };
 
 Machine.prototype.suspend = function(cb) {
-    this._run(_command('suspend'), cb);
+    var proc = this._run(_command('suspend'), cb);
+    var self = this;
+    proc.stdout.on('data', function(buff) {
+        var data = buff.toString();
+        self.emit('suspend-progress', data);
+    });
 };
 
 Machine.prototype.resume = function(cb) {
-    this._run(_command('resume'), cb);
+    var proc = this._run(_command('resume'), cb);
+    var self = this;
+    proc.stdout.on('data', function(buff) {
+        var data = buff.toString();
+        self.emit('resume-progress', data);
+    });
 };
 
 Machine.prototype.halt = function(args, cb) {
     cb = cb || args;
 
     var command = _command('halt', args, ['-f']);
-    this._run(command, cb);
+    var proc = this._run(command, cb);
+
+    var self = this;
+    proc.stdout.on('data', function(buff) {
+        var data = buff.toString();
+        self.emit('halt-progress', data);
+    });
 };
 
 Machine.prototype.reload = function(args, cb) {
@@ -311,7 +333,13 @@ Machine.prototype.reload = function(args, cb) {
 };
 
 Machine.prototype.provision = function(cb) {
-    this._run(_command('provision'), cb);
+    var proc = this._run(_command('provision'), cb);
+
+    var self = this;
+    proc.stdout.on('data', function(buff) {
+        var data = buff.toString();
+        self.emit('provision-progress', data);
+    });
 };
 
 Machine.prototype.snapshots = function () {
