@@ -1,5 +1,5 @@
 var child_process = require('child_process');
-var spawn = child_process.spawn;
+var spawn = child_process.execFile;
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 var path = require('path');
