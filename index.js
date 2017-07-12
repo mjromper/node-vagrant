@@ -1,5 +1,5 @@
 var child_process = require('child_process');
-var spawn = child_process.execFile;
+var execFile = child_process.execFile;
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 var path = require('path');
@@ -8,7 +8,9 @@ var fs = require('fs');
 var provisionerAdapters = require('./provisioners');
 var statusParser = require('./parseStatus');
 
-var vagrant = process.env.VAGRANT_DIR ? path.join(process.env.VAGRANT_DIR, 'vagrant') : 'vagrant';
+
+//var vagrant = process.env.VAGRANT_DIR ? path.join(process.env.VAGRANT_DIR, 'vagrant') : 'vagrant';
+var vagrant = '/usr/local/bin/vagrant';
 
 var SSH_CONFIG_MATCHERS = {
     host: /Host (\S+)$/mi,
@@ -31,7 +33,6 @@ function Machine(opts) {
     }
 
     this.batch = [];
-
     this.opts = opts;
     this.opts.cwd = this.opts.cwd || process.cwd();
     this.opts.env = this.opts.env || process.env;
@@ -76,9 +77,10 @@ function run(command, opts, cb) {
     }
 
     opts.detached = false;
-    var child = spawn(vagrant, command, opts);
+    opts.stdio = [ 'inherit' ];
+    var child = execFile(vagrant, command, opts, cb);
 
-    if (typeof cb === 'function') {
+    /*if (typeof cb === 'function') {
         var out = '';
         var err = '';
 
@@ -97,7 +99,7 @@ function run(command, opts, cb) {
 
             return cb(null, out);
         });
-    }
+    }*/
 
     return child;
 }
@@ -113,8 +115,6 @@ Machine.prototype._run = function(command, cb) {
 
     self._runningCommand = true;
 
-    // var out = '';
-    // var err = '';
     var child = run(command, {
         cwd: self.opts.cwd,
         env: self.opts.env,
@@ -171,7 +171,17 @@ Machine.prototype.status = function(cb) {
 };
 
 Machine.prototype.up = function(args, cb) {
-    cb = cb || args;
+    if ( typeof args === 'function' ){
+        cb = args;
+        args = [];
+        if ( this.opts.id ) {
+            args = [this.opts.id];
+        }
+    } else {
+        if ( this.opts.id ) {
+            args.unshift(this.opts.id);
+        }
+    }
 
     var command = _command('up', args);
     var proc = this._run(command, cb);
@@ -281,65 +291,81 @@ Machine.prototype.init = function(args, config, cb) {
     }
 };
 
-Machine.prototype.destroy = function(args, cb) {
-    cb = cb || args;
-
-    var command = _command('destroy', args, ['-f']);
+Machine.prototype._exec = function(command, method, cb) {
     var proc = this._run(command, cb);
 
     var self = this;
     proc.stdout.on('data', function(buff) {
         var data = buff.toString();
-        self.emit('destroy-progress', data);
+        self.emit(method+'-progress', data);
     });
+}
+
+Machine.prototype.destroy = function(args, cb) {
+    if ( typeof args === 'function' ){
+        cb = args;
+        args = [this.opts.id];
+    } else {
+        args.unshift(this.opts.id);
+    }
+
+    var command = _command('destroy', args, ['-f']);
+    this._exec(command, 'destroy', cb);
 };
 
-Machine.prototype.suspend = function(cb) {
-    var proc = this._run(_command('suspend'), cb);
-    var self = this;
-    proc.stdout.on('data', function(buff) {
-        var data = buff.toString();
-        self.emit('suspend-progress', data);
-    });
+Machine.prototype.suspend = function(args, cb) {
+    if ( typeof args === 'function' ){
+        cb = args;
+        args = [this.opts.id];
+    } else {
+        args.unshift(this.opts.id);
+    }
+    var command = _command('suspend', args);
+    this._exec(command, 'suspend', cb);
 };
 
-Machine.prototype.resume = function(cb) {
-    var proc = this._run(_command('resume'), cb);
-    var self = this;
-    proc.stdout.on('data', function(buff) {
-        var data = buff.toString();
-        self.emit('resume-progress', data);
-    });
+Machine.prototype.resume = function(args, cb) {
+    if ( typeof args === 'function' ){
+        cb = args;
+        args = [this.opts.id];
+    } else {
+        args.unshift(this.opts.id);
+    }
+    var command = _command('resume', args);
+    this._exec(command, 'resume', cb);
 };
 
 Machine.prototype.halt = function(args, cb) {
-    cb = cb || args;
-
+    if ( typeof args === 'function' ){
+        cb = args;
+        args = [this.opts.id];
+    } else {
+        args.unshift(this.opts.id);
+    }
     var command = _command('halt', args, ['-f']);
-    var proc = this._run(command, cb);
-
-    var self = this;
-    proc.stdout.on('data', function(buff) {
-        var data = buff.toString();
-        self.emit('halt-progress', data);
-    });
+    this._exec(command, 'halt', cb);
 };
 
 Machine.prototype.reload = function(args, cb) {
-    cb = cb || args;
-
+    if ( typeof args === 'function' ){
+        cb = args;
+        args = [this.opts.id];
+    } else {
+        args.unshift(this.opts.id);
+    }
     var command = _command('reload', args);
-    this._run(command, cb);
+    this._exec(command, 'reload', cb);
 };
 
-Machine.prototype.provision = function(cb) {
-    var proc = this._run(_command('provision'), cb);
-
-    var self = this;
-    proc.stdout.on('data', function(buff) {
-        var data = buff.toString();
-        self.emit('provision-progress', data);
-    });
+Machine.prototype.provision = function(args, cb) {
+    if ( typeof args === 'function' ){
+        cb = args;
+        args = [this.opts.id];
+    } else {
+        args.unshift(this.opts.id);
+    }
+    var command = _command('provision', args);
+    this._exec(command, 'provision', cb);
 };
 
 Machine.prototype.snapshots = function () {
@@ -418,5 +444,5 @@ module.exports.create = function(opts) {
 };
 
 module.exports.version = function(cb) {
-    run(_command('version'), cb);
+    run(_command('version'), {}, cb);
 };
