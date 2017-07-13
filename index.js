@@ -7,10 +7,17 @@ var _ = require('lodash');
 var fs = require('fs');
 var provisionerAdapters = require('./provisioners');
 var statusParser = require('./parseStatus');
+var platform = require('os').platform();
 
 
-//var vagrant = process.env.VAGRANT_DIR ? path.join(process.env.VAGRANT_DIR, 'vagrant') : 'vagrant';
-var vagrant = '/usr/local/bin/vagrant';
+var vagrant = process.env.VAGRANT_DIR ? path.join(process.env.VAGRANT_DIR, 'vagrant') : 'vagrant';
+if ( platform === 'darwin' ) {
+    vagrant = '/usr/local/bin/vagrant';
+} else if ( platform === 'win32' ) {
+    //TODO set PATH for windows
+} else {
+    vagrant = '/usr/bin/vagrant';
+}
 
 var SSH_CONFIG_MATCHERS = {
     host: /Host (\S+)$/mi,
@@ -124,7 +131,6 @@ Machine.prototype._run = function(command, cb) {
         if (next) {
             self._run(next.command, next.cb);
         }
-
         if (typeof cb === 'function') {
             cb(err, data);
         }
