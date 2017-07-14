@@ -14,7 +14,7 @@ var vagrant = process.env.VAGRANT_DIR ? path.join(process.env.VAGRANT_DIR, 'vagr
 if ( platform === 'darwin' ) {
     vagrant = '/usr/local/bin/vagrant';
 } else if ( platform === 'win32' ) {
-    //TODO set PATH for windows
+    vagrant = 'C:\\HashiCorp\\Vagrant\\bin\\vagrant.exe';
 } else {
     vagrant = '/usr/bin/vagrant';
 }
@@ -403,6 +403,20 @@ Machine.prototype.snapshots = function () {
 
 Machine.prototype._generic = function(name, args, cb) {
     this._run(_command(name, args), cb);
+};
+
+module.exports.boxlist = function(cb) {
+    var command = _command('box', 'list');
+    run(command, function(err, out) {
+        if (err) {
+            return cb(err);
+        }
+        var o = out.split('\n');
+        o = o.filter(function(b){
+            return b && b.length > 0;
+        })
+        cb(null, o);
+    });
 };
 
 module.exports.Machine = Machine;
